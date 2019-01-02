@@ -3,11 +3,14 @@ require 'octokit'
 require 'logger'
 
 client = Octokit::Client.new access_token: ENV["OCTOKIT_ACCESS_TOKEN"]
-since = Time.now - (60 * 11)
-ignored = %w(stale[bot] jekyllbot)
+since = Time.now - (60 * 20)
+ignored = %w(stale[bot] jekyllbot dependabot[bot])
 logger = Logger.new(STDOUT)
+notifications = client.notifications(since: since.iso8601)
 
-client.notifications(since: since.iso8601).each do |notification|
+logger.info "Found #{notifications.count} notification(s)"
+
+notifications.each do |notification|
   next unless notification.subject.rels[:latest_comment]
   comment = notification.subject.rels[:latest_comment].get.data
   next unless ignored.include?(comment.user.login)
