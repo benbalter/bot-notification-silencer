@@ -1,0 +1,5 @@
+name: Bot notification silencer
+description: Marks notifications from GitHub bots as read.
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
