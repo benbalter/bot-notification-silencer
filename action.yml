@@ -1,5 +1,9 @@
 name: Bot notification silencer
 description: Marks notifications from GitHub bots as read.
+inputs:
+  token:
+    description: A GitHub personal access token with `notifications` scope
+    required: true
 runs:
   using: 'node16'
   main: 'dist/index.js'
