@@ -41,6 +41,7 @@ function maybeMarkAsRead(notification, author) {
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const notifications = yield getNotifications();
+        (0, core_1.info)(`Found ${notifications.length} notifications`);
         for (const notification of notifications) {
             const { data: { user: author }, } = yield octokit.request(notification.subject.url);
             if (maybeMarkAsRead(notification, author)) {

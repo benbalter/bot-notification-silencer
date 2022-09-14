@@ -38,6 +38,8 @@ function maybeMarkAsRead(
 async function run() {
   const notifications = await getNotifications();
 
+  info(`Found ${notifications.length} notifications`);
+
   for (const notification of notifications) {
     const {
       data: { user: author },
