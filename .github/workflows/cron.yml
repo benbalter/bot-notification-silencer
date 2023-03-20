@@ -20,5 +20,5 @@ jobs:
 
       - name: Run
         run: node dist/index.js
-        env:
-          GITHUB_TOKEN: ${{ secrets.NOTIFICATIONS_TOKEN }}
+        with:
+          token: ${{ secrets.NOTIFICATIONS_TOKEN }}
