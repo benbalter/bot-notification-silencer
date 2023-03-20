@@ -1,0 +1,24 @@
+name: Cron
+
+on:
+  schedule:
+    - cron: '0,15,30,45 * * * MON-FRI'
+  workflow_dispatch: {}
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 19
+          cache: 'npm'
+
+      - name: Run
+        run: node dist/index.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
