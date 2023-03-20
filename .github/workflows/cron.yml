@@ -19,6 +19,6 @@ jobs:
           cache: 'npm'
 
       - name: Run
-        run: node dist/index.js
+        uses: ./
         with:
           token: ${{ secrets.NOTIFICATIONS_TOKEN }}
