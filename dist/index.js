@@ -15,12 +15,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-__nccwpck_require__(4227);
+const dotenv_1 = __importDefault(__nccwpck_require__(2437));
 const github_1 = __nccwpck_require__(5438);
 const core_1 = __nccwpck_require__(2186);
+dotenv_1.default.config();
 const ignored = ["dependabot[bot]", "dependabot-preview[bot]", "stale[bot]"];
-const token = (0, core_1.getInput)("token");
+const token = (0, core_1.getInput)("token", { required: true });
 const octokit = (0, github_1.getOctokit)(token, { debug: true });
 function getNotifications() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -30,6 +34,16 @@ function getNotifications() {
             since: since.toISOString(),
         });
         return notifications;
+    });
+}
+function getAuthor(notification, getLatestCommentAuthor) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = getLatestCommentAuthor && notification.subject.latest_comment_url
+            ? notification.subject.latest_comment_url
+            : notification.subject.url;
+        const response = yield octokit.request(url);
+        const author = response.data.user;
+        return author;
     });
 }
 function maybeMarkAsRead(notification, author) {
@@ -50,14 +64,11 @@ function run() {
         const notifications = yield getNotifications();
         (0, core_1.info)(`Found ${notifications.length} notifications`);
         for (const notification of notifications) {
-            const { data: { user: author }, } = yield octokit.request(notification.subject.url);
+            const author = yield getAuthor(notification);
             if (maybeMarkAsRead(notification, author)) {
                 continue;
             }
-            if (!notification.subject.latest_comment_url) {
-                continue;
-            }
-            const { data: { user: commentAuthor }, } = yield octokit.request(notification.subject.latest_comment_url);
+            const commentAuthor = yield getAuthor(notification, true);
             maybeMarkAsRead(notification, commentAuthor);
         }
     });
@@ -4615,67 +4626,6 @@ class Deprecation extends Error {
 }
 
 exports.Deprecation = Deprecation;
-
-
-/***/ }),
-
-/***/ 4227:
-/***/ ((__unused_webpack_module, __unused_webpack_exports, __nccwpck_require__) => {
-
-(function () {
-  (__nccwpck_require__(2437).config)(
-    Object.assign(
-      {},
-      __nccwpck_require__(5158),
-      __nccwpck_require__(5478)(process.argv)
-    )
-  )
-})()
-
-
-/***/ }),
-
-/***/ 5478:
-/***/ ((module) => {
-
-const re = /^dotenv_config_(encoding|path|debug|override)=(.+)$/
-
-module.exports = function optionMatcher (args) {
-  return args.reduce(function (acc, cur) {
-    const matches = cur.match(re)
-    if (matches) {
-      acc[matches[1]] = matches[2]
-    }
-    return acc
-  }, {})
-}
-
-
-/***/ }),
-
-/***/ 5158:
-/***/ ((module) => {
-
-// ../config.js accepts options via environment variables
-const options = {}
-
-if (process.env.DOTENV_CONFIG_ENCODING != null) {
-  options.encoding = process.env.DOTENV_CONFIG_ENCODING
-}
-
-if (process.env.DOTENV_CONFIG_PATH != null) {
-  options.path = process.env.DOTENV_CONFIG_PATH
-}
-
-if (process.env.DOTENV_CONFIG_DEBUG != null) {
-  options.debug = process.env.DOTENV_CONFIG_DEBUG
-}
-
-if (process.env.DOTENV_CONFIG_OVERRIDE != null) {
-  options.override = process.env.DOTENV_CONFIG_OVERRIDE
-}
-
-module.exports = options
 
 
 /***/ }),

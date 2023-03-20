@@ -1,13 +1,26 @@
-import "dotenv/config";
-
+import dotenv from "dotenv";
 import { getOctokit } from "@actions/github";
 import { getInput, info } from "@actions/core";
+dotenv.config();
 
 const ignored = ["dependabot[bot]", "dependabot-preview[bot]", "stale[bot]"];
-const token = getInput("token");
+const token = getInput("token", { required: true });
 const octokit = getOctokit(token, { debug: true });
 
-async function getNotifications() {
+type Notification = {
+  id: string;
+  subject: {
+    title: string;
+    url: string;
+    latest_comment_url: string;
+  };
+};
+
+type User = {
+  login: string;
+};
+
+async function getNotifications(): Promise<Notification[]> {
   const since = new Date();
   since.setHours(since.getHours() - 1);
 
@@ -19,10 +32,21 @@ async function getNotifications() {
   return notifications;
 }
 
-function maybeMarkAsRead(
-  notification: { subject: { title: string }; id: string },
-  author: { login: string }
-): boolean {
+async function getAuthor(
+  notification: Notification,
+  getLatestCommentAuthor?: boolean
+): Promise<User> {
+  const url =
+    getLatestCommentAuthor && notification.subject.latest_comment_url
+      ? notification.subject.latest_comment_url
+      : notification.subject.url;
+
+  const response = await octokit.request(url);
+  const author: User = response.data.user;
+  return author;
+}
+
+function maybeMarkAsRead(notification: Notification, author: User): boolean {
   if (ignored.includes(author.login)) {
     info(`Marking notification ${notification.subject.title} as read`);
     octokit.rest.activity.markThreadAsRead({
@@ -41,21 +65,13 @@ async function run() {
   info(`Found ${notifications.length} notifications`);
 
   for (const notification of notifications) {
-    const {
-      data: { user: author },
-    } = await octokit.request(notification.subject.url);
+    const author = await getAuthor(notification);
+
     if (maybeMarkAsRead(notification, author)) {
       continue;
     }
 
-    if (!notification.subject.latest_comment_url) {
-      continue;
-    }
-
-    const {
-      data: { user: commentAuthor },
-    } = await octokit.request(notification.subject.latest_comment_url);
-
+    const commentAuthor = await getAuthor(notification, true);
     maybeMarkAsRead(notification, commentAuthor);
   }
 }

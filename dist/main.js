@@ -8,12 +8,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-require("dotenv/config");
+const dotenv_1 = __importDefault(require("dotenv"));
 const github_1 = require("@actions/github");
 const core_1 = require("@actions/core");
+dotenv_1.default.config();
 const ignored = ["dependabot[bot]", "dependabot-preview[bot]", "stale[bot]"];
-const token = (0, core_1.getInput)("token");
+const token = (0, core_1.getInput)("token", { required: true });
 const octokit = (0, github_1.getOctokit)(token, { debug: true });
 function getNotifications() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -23,6 +27,16 @@ function getNotifications() {
             since: since.toISOString(),
         });
         return notifications;
+    });
+}
+function getAuthor(notification, getLatestCommentAuthor) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = getLatestCommentAuthor && notification.subject.latest_comment_url
+            ? notification.subject.latest_comment_url
+            : notification.subject.url;
+        const response = yield octokit.request(url);
+        const author = response.data.user;
+        return author;
     });
 }
 function maybeMarkAsRead(notification, author) {
@@ -43,14 +57,11 @@ function run() {
         const notifications = yield getNotifications();
         (0, core_1.info)(`Found ${notifications.length} notifications`);
         for (const notification of notifications) {
-            const { data: { user: author }, } = yield octokit.request(notification.subject.url);
+            const author = yield getAuthor(notification);
             if (maybeMarkAsRead(notification, author)) {
                 continue;
             }
-            if (!notification.subject.latest_comment_url) {
-                continue;
-            }
-            const { data: { user: commentAuthor }, } = yield octokit.request(notification.subject.latest_comment_url);
+            const commentAuthor = yield getAuthor(notification, true);
             maybeMarkAsRead(notification, commentAuthor);
         }
     });
