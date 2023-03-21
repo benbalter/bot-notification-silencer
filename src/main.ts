@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { getOctokit } from "@actions/github";
-import { getInput, info } from "@actions/core";
+import { getInput, info, setFailed } from "@actions/core";
 dotenv.config();
 
 const ignored = ["dependabot[bot]", "dependabot-preview[bot]", "stale[bot]"];
@@ -76,4 +76,8 @@ async function run() {
   }
 }
 
-run();
+try {
+  run();
+} catch (error: any) {
+  setFailed(error.message);
+}

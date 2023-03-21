@@ -40,7 +40,7 @@ function getAuthor(notification, getLatestCommentAuthor) {
     });
 }
 function maybeMarkAsRead(notification, author) {
-    if (ignored.includes(author.login)) {
+    if (author.login && ignored.includes(author.login)) {
         (0, core_1.info)(`Marking notification ${notification.subject.title} as read`);
         octokit.rest.activity.markThreadAsRead({
             // eslint-disable-next-line camelcase
@@ -66,4 +66,9 @@ function run() {
         }
     });
 }
-run();
+try {
+    run();
+}
+catch (error) {
+    (0, core_1.setFailed)(error.message);
+}
