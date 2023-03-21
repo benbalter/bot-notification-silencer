@@ -47,7 +47,7 @@ async function getAuthor(
 }
 
 function maybeMarkAsRead(notification: Notification, author: User): boolean {
-  if (ignored.includes(author.login)) {
+  if (author.login && ignored.includes(author.login)) {
     info(`Marking notification ${notification.subject.title} as read`);
     octokit.rest.activity.markThreadAsRead({
       // eslint-disable-next-line camelcase
