@@ -47,7 +47,7 @@ function getAuthor(notification, getLatestCommentAuthor) {
     });
 }
 function maybeMarkAsRead(notification, author) {
-    if (author.login && ignored.includes(author.login)) {
+    if ((author === null || author === void 0 ? void 0 : author.login) && ignored.includes(author.login)) {
         (0, core_1.info)(`Marking notification ${notification.subject.title} as read`);
         octokit.rest.activity.markThreadAsRead({
             // eslint-disable-next-line camelcase
