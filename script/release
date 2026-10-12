@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Builds dist/ and tags a release without committing dist/ to main.
+#
+# dist/ is gitignored on main. This script builds it, commits it on a detached
+# commit whose parent is main's HEAD, points vX.Y.Z and the floating vX tag at
+# that commit, and prints the push commands. It never changes main.
+#
+# Usage: script/release vX.Y.Z
+
+set -euo pipefail
+
+usage() {
+  echo "Usage: script/release vX.Y.Z" >&2
+  exit 1
+}
+
+[ $# -eq 1 ] || usage
+version="$1"
+if [[ ! "$version" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+  echo "error: version must look like v1.2.3, got '$version'" >&2
+  usage
+fi
+major="v${BASH_REMATCH[1]}"
+
+cd "$(git rev-parse --show-toplevel)"
+
+branch="$(git symbolic-ref --quiet --short HEAD || true)"
+if [ "$branch" != "main" ]; then
+  echo "error: run this from main (currently on '${branch:-detached HEAD}')" >&2
+  exit 1
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+  echo "error: working tree isn't clean; commit or stash your changes first" >&2
+  git status --short >&2
+  exit 1
+fi
+
+git fetch --quiet origin main --tags
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+  echo "error: local main doesn't match origin/main; pull or push first" >&2
+  exit 1
+fi
+
+if git rev-parse --quiet --verify "refs/tags/$version" >/dev/null; then
+  echo "error: tag $version already exists" >&2
+  exit 1
+fi
+
+npm ci
+npm run build
+npm run package
+
+# Stage dist/ in a throwaway index so main's index and working tree stay as is.
+tmp_index="$(mktemp)"
+trap 'rm -f "$tmp_index"' EXIT
+export GIT_INDEX_FILE="$tmp_index"
+git read-tree HEAD
+git add --force dist
+tree="$(git write-tree)"
+unset GIT_INDEX_FILE
+
+commit="$(git commit-tree "$tree" -p HEAD -m "Release $version" -m "Built dist/ from $(git rev-parse --short HEAD).")"
+
+git tag -m "$version" "$version" "$commit"
+git tag -f -m "$version" "$major" "$commit"
+
+cat <<MSG
+
+Tagged $version and moved $major to $commit (parent: $(git rev-parse --short HEAD)).
+main was not changed. To publish, run:
+
+  git push origin refs/tags/$version
+  git push --force origin refs/tags/$major
+
+Then create the GitHub release:
+
+  gh release create $version --verify-tag --generate-notes
+MSG
