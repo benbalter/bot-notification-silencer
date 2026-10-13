@@ -1,83 +1,40 @@
 import dotenv from "dotenv";
 import { getOctokit } from "@actions/github";
-import { getInput, info, setFailed } from "@actions/core";
+import {
+  getBooleanInput,
+  getInput,
+  info,
+  setFailed,
+  setOutput,
+  warning,
+} from "@actions/core";
+import { DEFAULT_BOTS, silence } from "./silencer";
 dotenv.config();
 
-const ignored = ["dependabot[bot]", "dependabot-preview[bot]", "stale[bot]"];
-const token = getInput("token", { required: true });
-const octokit = getOctokit(token, { debug: true });
+async function run(): Promise<void> {
+  const token = getInput("token", { required: true });
+  const extraBots = getInput("bots")
+    .split(",")
+    .map((bot) => bot.trim())
+    .filter(Boolean);
 
-type Notification = {
-  id: string;
-  subject: {
-    title: string;
-    url: string;
-    latest_comment_url: string;
-  };
-};
+  const count = await silence(getOctokit(token), {
+    bots: [...DEFAULT_BOTS, ...extraBots],
+    dryRun: getInput("dry-run") !== "" && getBooleanInput("dry-run"),
+    log: info,
+    warn: warning,
+  });
 
-type User = {
-  login: string;
-};
-
-async function getNotifications(): Promise<Notification[]> {
-  const since = new Date();
-  since.setHours(since.getHours() - 1);
-
-  const { data: notifications } =
-    await octokit.rest.activity.listNotificationsForAuthenticatedUser({
-      since: since.toISOString(),
-    });
-
-  return notifications;
+  info(`Marked ${count} notifications done`);
+  setOutput("count", count);
 }
 
-async function getAuthor(
-  notification: Notification,
-  getLatestCommentAuthor?: boolean
-): Promise<User> {
-  const url =
-    getLatestCommentAuthor && notification.subject.latest_comment_url
-      ? notification.subject.latest_comment_url
-      : notification.subject.url;
-
-  const response = await octokit.request(url);
-  const author: User = response.data.user;
-  return author;
-}
-
-function maybeMarkAsRead(notification: Notification, author: User): boolean {
-  if (author?.login && ignored.includes(author.login)) {
-    info(`Marking notification ${notification.subject.title} as read`);
-    octokit.rest.activity.markThreadAsRead({
-      // eslint-disable-next-line camelcase
-      thread_id: parseInt(notification.id),
-    });
-    return true;
-  } else {
-    return false;
+async function main(): Promise<void> {
+  try {
+    await run();
+  } catch (error) {
+    setFailed((error as Error).message);
   }
 }
 
-async function run() {
-  const notifications = await getNotifications();
-
-  info(`Found ${notifications.length} notifications`);
-
-  for (const notification of notifications) {
-    const author = await getAuthor(notification);
-
-    if (maybeMarkAsRead(notification, author)) {
-      continue;
-    }
-
-    const commentAuthor = await getAuthor(notification, true);
-    maybeMarkAsRead(notification, commentAuthor);
-  }
-}
-
-try {
-  run();
-} catch (error: any) {
-  setFailed(error.message);
-}
+main();

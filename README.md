@@ -1,6 +1,18 @@
-Marks notifications from bots as read.
+Marks notifications about bot PRs and issues as done once they're closed or merged, so the inbox only holds bot PRs that still need you: failing CI, held for review, or stuck.
 
-Originally intended to be run via a scheduled Heroku job, but could probably be run via GitHub Actions or elsewhere. 
+It covers Dependabot, Renovate, and stale by default. A closed issue whose latest comment came from one of those bots counts too, which catches issues stale closed. Open threads are never touched.
+
+## Usage
+
+[`.github/workflows/silence.yml`](.github/workflows/silence.yml) runs it hourly from this repo. It needs a `NOTIFICATIONS_TOKEN` secret: a [classic personal access token with only the `notifications` scope](https://github.com/settings/tokens/new?scopes=notifications&description=bot-notification-silencer) (fine-grained tokens can't read notifications).
+
+To see what it would do, run the workflow by hand; manual runs default to a dry run. Locally, after `npm ci && npm run build && npm run package`:
+
+```sh
+env INPUT_TOKEN="$(gh auth token)" 'INPUT_DRY-RUN=true' node dist/index.js
+```
+
+Inputs: `token` (required), `bots` (extra comma-separated bot logins), and `dry-run`.
 
 ## Releasing
 
