@@ -1,9 +1,20 @@
 name: Bot notification silencer
-description: Marks notifications from GitHub bots as read.
+description: Marks notifications about closed or merged bot PRs and issues as done.
 inputs:
   token:
-    description: A GitHub personal access token with `notifications` scope
+    description: A classic personal access token with the `notifications` scope
     required: true
+  bots:
+    description: Comma-separated bot logins to treat as bots, in addition to Dependabot, Renovate, and stale
+    required: false
+    default: ''
+  dry-run:
+    description: Log what would be marked done without changing anything
+    required: false
+    default: 'false'
+outputs:
+  count:
+    description: How many notifications were marked done (or would be, in a dry run)
 runs:
-  using: 'node16'
+  using: 'node24'
   main: 'dist/index.js'

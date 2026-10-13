@@ -1,7 +1,7 @@
 {
   "name": "bot-notification-silencer",
   "version": "0.0.1",
-  "description": "Marks notifications from GitHub bots as read.",
+  "description": "Marks notifications about closed or merged bot PRs and issues as done.",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
@@ -42,5 +42,12 @@
     "prettier": "2.8.8",
     "ts-jest": "^29.0.5",
     "typescript": ">=3.3.1, <5.1.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ]
   }
 }
