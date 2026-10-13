@@ -32,9 +32,14 @@ describe("shouldMarkDone", () => {
 });
 
 describe("silence", () => {
-  const notification = (id: string, url: string, type = "PullRequest") => ({
+  const notification = (
+    id: string,
+    url: string,
+    type = "PullRequest",
+    isPrivate = false
+  ) => ({
     id,
-    repository: { full_name: "benbalter/example" },
+    repository: { full_name: `benbalter/example-${id}`, private: isPrivate },
     subject: { title: `#${id}`, url, type, latest_comment_url: url },
   });
 
@@ -54,6 +59,7 @@ describe("silence", () => {
         notification("2", "https://api/open"),
         notification("3", "https://api/release", "Release"),
         notification("4", "https://api/missing"),
+        notification("5", "https://api/merged", "PullRequest", true),
       ],
       rest: { activity: { listNotificationsForAuthenticatedUser: {} } },
       request: async (route: string, params?: { thread_id: number }) => {
@@ -79,15 +85,24 @@ describe("silence", () => {
       log: () => {},
       warn: (message) => warnings.push(message),
     });
-    expect(count).toBe(1);
-    expect(deleted).toEqual([1]);
+    expect(count).toBe(2);
+    expect(deleted).toEqual([1, 5]);
     expect(warnings).toHaveLength(1);
   });
 
   it("changes nothing in a dry run", async () => {
     const { octokit, deleted } = fakeOctokit();
     const count = await silence(octokit, { bots, dryRun: true, ...quiet });
-    expect(count).toBe(1);
+    expect(count).toBe(2);
     expect(deleted).toEqual([]);
+  });
+
+  it("never names a private repo in its logs", async () => {
+    const { octokit } = fakeOctokit();
+    const lines: string[] = [];
+    const record = (message: string) => lines.push(message);
+    await silence(octokit, { bots, dryRun: true, log: record, warn: record });
+    expect(lines.join("\n")).not.toContain("example-5");
+    expect(lines).toContain("Would mark done: a private repo (thread 5)");
   });
 });

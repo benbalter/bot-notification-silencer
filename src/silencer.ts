@@ -56,7 +56,10 @@ export async function silence(
     const { subject, repository } = notification;
     if (!subject.url || !SUBJECT_TYPES.includes(subject.type)) continue;
 
-    const name = `${repository.full_name}: ${subject.title}`;
+    // The scheduled run's logs are public, so never name a private repo.
+    const name = repository.private
+      ? `a private repo (thread ${notification.id})`
+      : `${repository.full_name}: ${subject.title}`;
     try {
       const { data } = await octokit.request(`GET ${subject.url}`);
       const author: string | undefined = data.user?.login;
